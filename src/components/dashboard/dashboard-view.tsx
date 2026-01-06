@@ -224,21 +224,14 @@ export default function DashboardView() {
     value: point.value,
   }));
 
-  const renderActiveInvestmentBar = (props: {
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    value?: number;
-    payload?: { label?: string };
-  }) => {
+  const renderActiveInvestmentBar: any = (props: any) => {
     if (
       props.x === undefined ||
       props.y === undefined ||
       props.width === undefined ||
       props.height === undefined
     ) {
-      return null;
+      return <g />;
     }
 
     const label = props.payload?.label ?? "";
@@ -268,13 +261,9 @@ export default function DashboardView() {
     );
   };
 
-  const renderActiveLiabilityDot = (props: {
-    cx?: number;
-    cy?: number;
-    payload?: { label?: string; value?: number };
-  }) => {
+  const renderActiveLiabilityDot: any = (props: any) => {
     if (props.cx === undefined || props.cy === undefined) {
-      return null;
+      return <g />;
     }
 
     const label = props.payload?.label ?? "";
