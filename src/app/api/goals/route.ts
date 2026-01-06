@@ -21,9 +21,9 @@ export async function GET() {
     return unauthorized();
   }
 
-  const goals = await prisma.goal.findMany({
-    where: { userId },
-    orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+  const goals = await prisma.goals.findMany({
+    where: { user_id: userId },
+    orderBy: [{ priority: "asc" }, { created_at: "desc" }],
   });
 
   return NextResponse.json({ data: goals });
@@ -41,14 +41,14 @@ export async function POST(request: Request) {
     return badRequest("Invalid payload", parsed.error.flatten());
   }
 
-  const goal = await prisma.goal.create({
+  const goal = await prisma.goals.create({
     data: {
-      userId,
+      user_id: userId,
       name: parsed.data.name,
-      targetAmount: parsed.data.targetAmount,
-      targetDate: parsed.data.targetDate,
+      target_amount: parsed.data.targetAmount,
+      target_date: parsed.data.targetDate,
       priority: parsed.data.priority,
-      assetCategory: parsed.data.assetCategory,
+      asset_category: parsed.data.assetCategory,
       status: parsed.data.status,
       notes: parsed.data.notes,
     },

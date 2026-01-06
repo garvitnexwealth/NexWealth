@@ -47,7 +47,7 @@ export default function RegisterPage() {
       <div className="mx-auto flex min-h-screen max-w-lg items-center px-6">
         <div className="card w-full p-8">
           <h1 className="text-3xl font-semibold">Create your account</h1>
-          <p className="mt-2 text-sm text-slate-400">Start building your FinanceHub profile.</p>
+          <p className="mt-2 text-sm text-slate-400">Start building your NexWealth profile.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <input

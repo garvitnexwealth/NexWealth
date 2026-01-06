@@ -24,12 +24,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const stockId = searchParams.get("stockId");
 
-  const prices = await prisma.stockPrice.findMany({
+  const prices = await prisma.stock_prices.findMany({
     where: {
-      userId,
-      ...(stockId ? { stockId: Number(stockId) } : {}),
+      user_id: userId,
+      ...(stockId ? { stock_id: Number(stockId) } : {}),
     },
-    orderBy: { asOfDate: "desc" },
+    orderBy: { as_of_date: "desc" },
   });
 
   return NextResponse.json({ data: prices });
@@ -54,13 +54,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Stock not found" }, { status: 404 });
   }
 
-  const price = await prisma.stockPrice.create({
+  const price = await prisma.stock_prices.create({
     data: {
-      userId,
-      stockId: parsed.data.stockId,
+      user_id: userId,
+      stock_id: parsed.data.stockId,
       price: parsed.data.price,
       currency: parsed.data.currency,
-      asOfDate: parsed.data.asOfDate,
+      as_of_date: parsed.data.asOfDate,
       source: parsed.data.source ?? "manual",
     },
   });

@@ -35,11 +35,19 @@ export default function CurrencyToggle({
     window.dispatchEvent(new Event("displayCurrencyChange"));
     onChange?.(currency);
 
-    fetch("/api/user", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayCurrency: currency }),
-    }).catch(() => null);
+    (async () => {
+      try {
+        const response = await fetch("/api/user", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ displayCurrency: currency }),
+        });
+        const { handleUnauthorized } = await import("@/lib/client-auth");
+        handleUnauthorized(response);
+      } catch {
+        // Ignore background preference updates.
+      }
+    })();
   }, [currency, onChange]);
 
   return (

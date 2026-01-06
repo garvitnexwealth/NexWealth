@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   const [goal, transaction] = await Promise.all([
-    prisma.goal.findFirst({ where: { id: parsed.data.goalId, userId } }),
+    prisma.goals.findFirst({ where: { id: parsed.data.goalId, user_id: userId } }),
     prisma.transaction.findFirst({ where: { id: parsed.data.transactionId, userId } }),
   ]);
 
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const link = await prisma.goalTransactionLink.create({
+  const link = await prisma.goal_transaction_links.create({
     data: {
-      userId,
-      goalId: parsed.data.goalId,
-      transactionId: parsed.data.transactionId,
+      user_id: userId,
+      goal_id: parsed.data.goalId,
+      transaction_id: parsed.data.transactionId,
     },
   });
 

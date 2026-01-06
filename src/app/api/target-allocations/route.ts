@@ -16,9 +16,9 @@ export async function GET() {
     return unauthorized();
   }
 
-  const allocations = await prisma.targetAllocation.findMany({
-    where: { userId },
-    orderBy: { assetCategory: "asc" },
+  const allocations = await prisma.target_allocations.findMany({
+    where: { user_id: userId },
+    orderBy: { asset_category: "asc" },
   });
 
   return NextResponse.json({ data: allocations });
@@ -36,20 +36,20 @@ export async function POST(request: Request) {
     return badRequest("Invalid payload", parsed.error.flatten());
   }
 
-  const allocation = await prisma.targetAllocation.upsert({
+  const allocation = await prisma.target_allocations.upsert({
     where: {
-      userId_assetCategory: {
-        userId,
-        assetCategory: parsed.data.assetCategory,
+      user_id_asset_category: {
+        user_id: userId,
+        asset_category: parsed.data.assetCategory,
       },
     },
     update: {
-      targetPercent: parsed.data.targetPercent,
+      target_percent: parsed.data.targetPercent,
     },
     create: {
-      userId,
-      assetCategory: parsed.data.assetCategory,
-      targetPercent: parsed.data.targetPercent,
+      user_id: userId,
+      asset_category: parsed.data.assetCategory,
+      target_percent: parsed.data.targetPercent,
     },
   });
 

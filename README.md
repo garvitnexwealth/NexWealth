@@ -1,4 +1,4 @@
-# FinanceHub
+# NexWealth
 
 Production-grade multi-user finance tracking app built with Next.js App Router, Prisma, NextAuth, and Redis caching.
 

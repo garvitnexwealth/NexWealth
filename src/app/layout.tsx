@@ -4,7 +4,7 @@ import "./globals.css";
 import Providers from "@/app/providers";
 
 export const metadata: Metadata = {
-  title: "FinanceHub",
+  title: "NexWealth",
   description: "Multi-user finance tracking with dashboards and analytics.",
 };
 

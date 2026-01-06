@@ -130,7 +130,7 @@ export async function POST(request: Request) {
       txnAction: parsed.data.txnAction,
       txnDate: parsed.data.txnDate,
       quantity: parsed.data.quantity ?? null,
-      unitPrice: parsed.data.unitPrice ?? null,
+      unit_price: parsed.data.unitPrice ?? null,
       amount: parsed.data.amount,
       currency: parsed.data.currency,
       fees: parsed.data.fees ?? 0,

@@ -26,13 +26,13 @@ export async function GET(request: Request) {
   const platformAccountId = searchParams.get("platformAccountId");
   const assetCategory = searchParams.get("assetCategory");
 
-  const snapshots = await prisma.holdingSnapshot.findMany({
+  const snapshots = await prisma.holding_snapshots.findMany({
     where: {
-      userId,
-      ...(platformAccountId ? { platformAccountId: Number(platformAccountId) } : {}),
-      ...(assetCategory ? { assetCategory: Number(assetCategory) } : {}),
+      user_id: userId,
+      ...(platformAccountId ? { platform_account_id: Number(platformAccountId) } : {}),
+      ...(assetCategory ? { asset_category: Number(assetCategory) } : {}),
     },
-    orderBy: { asOfDate: "desc" },
+    orderBy: { as_of_date: "desc" },
   });
 
   return NextResponse.json({ data: snapshots });
@@ -59,15 +59,15 @@ export async function POST(request: Request) {
     }
   }
 
-  const snapshot = await prisma.holdingSnapshot.create({
+  const snapshot = await prisma.holding_snapshots.create({
     data: {
-      userId,
-      platformAccountId: parsed.data.platformAccountId ?? null,
+      user_id: userId,
+      platform_account_id: parsed.data.platformAccountId ?? null,
       label: parsed.data.label,
-      assetCategory: parsed.data.assetCategory,
+      asset_category: parsed.data.assetCategory,
       value: parsed.data.value,
       currency: parsed.data.currency,
-      asOfDate: parsed.data.asOfDate,
+      as_of_date: parsed.data.asOfDate,
     },
   });
 

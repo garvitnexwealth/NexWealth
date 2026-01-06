@@ -23,11 +23,20 @@ export async function GET() {
       id: true,
       email: true,
       name: true,
-      displayCurrency: true,
+      display_currency: true,
     },
   });
 
-  return NextResponse.json({ data: user });
+  return NextResponse.json({
+    data: user
+      ? {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          displayCurrency: user.display_currency,
+        }
+      : null,
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -46,10 +55,17 @@ export async function PATCH(request: Request) {
     where: { id: userId },
     data: {
       name: parsed.data.name,
-      displayCurrency: parsed.data.displayCurrency,
+      display_currency: parsed.data.displayCurrency,
     },
-    select: { id: true, email: true, name: true, displayCurrency: true },
+    select: { id: true, email: true, name: true, display_currency: true },
   });
 
-  return NextResponse.json({ data: user });
+  return NextResponse.json({
+    data: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      displayCurrency: user.display_currency,
+    },
+  });
 }

@@ -77,20 +77,22 @@ async function getFxRate(
     return 1;
   }
 
-  const key: FxCacheKey = `${fromCurrency}-${toCurrency}-${asOfDate.toISOString().slice(0, 10)}`;
+  const key: FxCacheKey = `${fromCurrency}-${toCurrency}-${asOfDate
+    .toISOString()
+    .slice(0, 10)}`;
   const cached = cache.get(key);
   if (cached) {
     return cached;
   }
 
-  const rate = await prisma.fxRate.findFirst({
+  const rate = await prisma.fx_rates.findFirst({
     where: {
-      userId,
-      fromCurrency,
-      toCurrency,
-      asOfDate: { lte: asOfDate },
+      user_id: userId,
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      as_of_date: { lte: asOfDate },
     },
-    orderBy: { asOfDate: "desc" },
+    orderBy: { as_of_date: "desc" },
   });
 
   if (!rate) {
@@ -123,7 +125,8 @@ export async function GET(request: Request) {
   const queryCurrency = getCurrency(searchParams.get("currency"));
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  const displayCurrency = queryCurrency ?? (user?.displayCurrency as Currency) ?? "INR";
+  const displayCurrency =
+    queryCurrency ?? (user?.display_currency as Currency) ?? "INR";
 
   const cache = getRedis();
   const cacheKey = `dashboard:${userId}:${displayCurrency}:${range}`;
@@ -154,13 +157,13 @@ export async function GET(request: Request) {
       include: { stock: true },
       orderBy: { txnDate: "asc" },
     }),
-    prisma.stockPrice.findMany({
-      where: { userId, asOfDate: { lte: now } },
-      orderBy: { asOfDate: "desc" },
+    prisma.stock_prices.findMany({
+      where: { user_id: userId, as_of_date: { lte: now } },
+      orderBy: { as_of_date: "desc" },
     }),
-    prisma.holdingSnapshot.findMany({
-      where: { userId, asOfDate: { lte: now } },
-      orderBy: { asOfDate: "desc" },
+    prisma.holding_snapshots.findMany({
+      where: { user_id: userId, as_of_date: { lte: now } },
+      orderBy: { as_of_date: "desc" },
     }),
     prisma.liabilitySnapshot.findMany({
       where: { userId, asOfDate: { lte: now } },
@@ -169,33 +172,50 @@ export async function GET(request: Request) {
     prisma.liability.findMany({
       where: { userId },
     }),
-    prisma.realEstateValuation.findMany({
-      where: { userId, asOfDate: { lte: now } },
-      orderBy: { asOfDate: "desc" },
+    prisma.real_estate_valuations.findMany({
+      where: { user_id: userId, as_of_date: { lte: now } },
+      orderBy: { as_of_date: "desc" },
     }),
   ]);
 
-  const latestStockPrices = mergeLatest(stockPrices, (item) => String(item.stockId));
+  const latestStockPrices = mergeLatest(stockPrices, (item) =>
+    String(item.stock_id)
+  );
   const latestHoldingSnapshots = mergeLatest(
     holdingSnapshotsRaw,
-    (item) => `${item.label}-${item.assetCategory}-${item.platformAccountId ?? 0}`
+    (item) =>
+      `${item.label}-${item.asset_category}-${item.platform_account_id ?? 0}`
   );
-  const latestLiabilitySnapshots = mergeLatest(
-    liabilitySnapshotsRaw,
-    (item) => String(item.liabilityId)
+  const latestLiabilitySnapshots = mergeLatest(liabilitySnapshotsRaw, (item) =>
+    String(item.liabilityId)
   );
-  const latestRealEstate = mergeLatest(realEstateRaw, (item) => item.propertyName);
+  const latestRealEstate = mergeLatest(
+    realEstateRaw,
+    (item) => item.property_name
+  );
 
-  const stockPriceById = new Map<number, { price: number; currency: Currency; asOfDate: Date }>();
+  const stockPriceById = new Map<
+    number,
+    { price: number; currency: Currency; asOfDate: Date }
+  >();
   for (const price of latestStockPrices) {
-    stockPriceById.set(price.stockId, {
+    stockPriceById.set(price.stock_id, {
       price: Number(price.price),
       currency: price.currency as Currency,
-      asOfDate: price.asOfDate,
+      asOfDate: price.as_of_date,
     });
   }
 
-  const positions = new Map<number, { quantity: number; costBasis: number; invested: number; stockName: string; stockType: number }>();
+  const positions = new Map<
+    number,
+    {
+      quantity: number;
+      costBasis: number;
+      invested: number;
+      stockName: string;
+      stockType: number;
+    }
+  >();
 
   for (const txn of transactions) {
     if (!txn.stockId || !txn.stock) {
@@ -214,7 +234,7 @@ export async function GET(request: Request) {
     };
 
     const qty = Number(txn.quantity ?? 0);
-    const unitPrice = Number(txn.unitPrice ?? 0);
+    const unitPrice = Number(txn.unit_price ?? 0);
     const fees = Number(txn.fees ?? 0);
 
     if (txn.txnAction === TxnAction.BUY) {
@@ -240,15 +260,17 @@ export async function GET(request: Request) {
   }> = [];
 
   for (const snap of latestHoldingSnapshots) {
-    if (snap.assetCategory === AssetCategory.REAL_ESTATE) {
-      warnings.push("Real estate snapshots detected; valuations take precedence.");
+    if (snap.asset_category === AssetCategory.REAL_ESTATE) {
+      warnings.push(
+        "Real estate snapshots detected; valuations take precedence."
+      );
       continue;
     }
     const fxRate = await getFxRate(
       userId,
       snap.currency as Currency,
       displayCurrency,
-      snap.asOfDate,
+      snap.as_of_date,
       fxCache
     );
 
@@ -256,7 +278,9 @@ export async function GET(request: Request) {
     if (fxRate) {
       convertedValue *= fxRate;
     } else if (snap.currency !== displayCurrency) {
-      warnings.push("Missing FX rate for some snapshots. Using native currency values.");
+      warnings.push(
+        "Missing FX rate for some snapshots. Using native currency values."
+      );
     }
 
     snapshotItems.push({
@@ -265,13 +289,17 @@ export async function GET(request: Request) {
       invested: null,
       gainAbs: null,
       gainPct: null,
-      category: snap.assetCategory as AssetCategory,
+      category: snap.asset_category as AssetCategory,
     });
   }
 
   const snapshotFallback = new Map<string, (typeof snapshotItems)[number]>();
   for (const item of snapshotItems) {
-    if ([AssetCategory.US_STOCKS, AssetCategory.IND_STOCKS].includes(item.category)) {
+    if (
+      [AssetCategory.US_STOCKS, AssetCategory.IND_STOCKS].includes(
+        item.category
+      )
+    ) {
       snapshotFallback.set(item.label, item);
     }
   }
@@ -304,7 +332,10 @@ export async function GET(request: Request) {
           invested: null,
           gainAbs: null,
           gainPct: null,
-          category: position.stockType === 1 ? AssetCategory.US_STOCKS : AssetCategory.IND_STOCKS,
+          category:
+            position.stockType === 1
+              ? AssetCategory.US_STOCKS
+              : AssetCategory.IND_STOCKS,
         });
       }
       continue;
@@ -322,7 +353,9 @@ export async function GET(request: Request) {
     if (fxRate) {
       convertedValue *= fxRate;
     } else if (price.currency !== displayCurrency) {
-      warnings.push("Missing FX rate for some stock prices. Using native currency values.");
+      warnings.push(
+        "Missing FX rate for some stock prices. Using native currency values."
+      );
     }
 
     let convertedInvested = position.invested;
@@ -333,8 +366,13 @@ export async function GET(request: Request) {
     }
     stocksTotal += convertedValue;
 
-    const gainAbs = convertedInvested ? convertedValue - convertedInvested : null;
-    const gainPct = convertedInvested && gainAbs !== null ? (gainAbs / convertedInvested) * 100 : null;
+    const gainAbs = convertedInvested
+      ? convertedValue - convertedInvested
+      : null;
+    const gainPct =
+      convertedInvested && gainAbs !== null
+        ? (gainAbs / convertedInvested) * 100
+        : null;
 
     stockItems.push({
       label: position.stockName,
@@ -342,18 +380,28 @@ export async function GET(request: Request) {
       invested: round(convertedInvested),
       gainAbs: gainAbs === null ? null : round(gainAbs),
       gainPct: gainPct === null ? null : round(gainPct),
-      category: position.stockType === 1 ? AssetCategory.US_STOCKS : AssetCategory.IND_STOCKS,
+      category:
+        position.stockType === 1
+          ? AssetCategory.US_STOCKS
+          : AssetCategory.IND_STOCKS,
     });
   }
 
   const filteredSnapshotItems = snapshotItems.filter((item) => {
-    if ([AssetCategory.US_STOCKS, AssetCategory.IND_STOCKS].includes(item.category)) {
+    if (
+      [AssetCategory.US_STOCKS, AssetCategory.IND_STOCKS].includes(
+        item.category
+      )
+    ) {
       return !usedFallback.has(item.label);
     }
     return true;
   });
 
-  const snapshotsTotal = filteredSnapshotItems.reduce((sum, item) => sum + item.value, 0);
+  const snapshotsTotal = filteredSnapshotItems.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
   const effectiveSnapshots = filteredSnapshotItems;
 
   let realEstateTotal = 0;
@@ -362,7 +410,7 @@ export async function GET(request: Request) {
       userId,
       valuation.currency as Currency,
       displayCurrency,
-      valuation.asOfDate,
+      valuation.as_of_date,
       fxCache
     );
     let convertedValue = Number(valuation.value);
@@ -376,12 +424,16 @@ export async function GET(request: Request) {
 
   let liabilityTotal = 0;
   for (const liability of liabilities) {
-    const snapshot = latestLiabilitySnapshots.find((item) => item.liabilityId === liability.id);
+    const snapshot = latestLiabilitySnapshots.find(
+      (item) => item.liabilityId === liability.id
+    );
     if (snapshot) {
       liabilityTotal += Number(snapshot.outstanding);
     } else if (liability.principal) {
       liabilityTotal += Number(liability.principal);
-      warnings.push("Missing liability snapshots for some entries; using principal.");
+      warnings.push(
+        "Missing liability snapshots for some entries; using principal."
+      );
     }
   }
 
@@ -425,7 +477,8 @@ export async function GET(request: Request) {
   const allocationMap = new Map<string, number>();
 
   for (const stock of stockItems) {
-    const label = stock.category === AssetCategory.US_STOCKS ? "US Stocks" : "IND Stocks";
+    const label =
+      stock.category === AssetCategory.US_STOCKS ? "US Stocks" : "IND Stocks";
     allocationMap.set(label, (allocationMap.get(label) ?? 0) + stock.value);
   }
 
@@ -434,18 +487,30 @@ export async function GET(request: Request) {
       const label = "Metals & Crypto";
       allocationMap.set(label, (allocationMap.get(label) ?? 0) + snap.value);
     } else if (snap.category === AssetCategory.RETIRALS) {
-      allocationMap.set("Retirals", (allocationMap.get("Retirals") ?? 0) + snap.value);
+      allocationMap.set(
+        "Retirals",
+        (allocationMap.get("Retirals") ?? 0) + snap.value
+      );
     } else if (snap.category === AssetCategory.MF) {
       allocationMap.set("MF", (allocationMap.get("MF") ?? 0) + snap.value);
     } else if (snap.category === AssetCategory.CASH) {
-      allocationMap.set("Cash & Bank", (allocationMap.get("Cash & Bank") ?? 0) + snap.value);
+      allocationMap.set(
+        "Cash & Bank",
+        (allocationMap.get("Cash & Bank") ?? 0) + snap.value
+      );
     } else {
-      allocationMap.set("Other", (allocationMap.get("Other") ?? 0) + snap.value);
+      allocationMap.set(
+        "Other",
+        (allocationMap.get("Other") ?? 0) + snap.value
+      );
     }
   }
 
   if (realEstateTotal > 0) {
-    allocationMap.set("Real Estate", (allocationMap.get("Real Estate") ?? 0) + realEstateTotal);
+    allocationMap.set(
+      "Real Estate",
+      (allocationMap.get("Real Estate") ?? 0) + realEstateTotal
+    );
   }
 
   const allocationOrder = [
@@ -467,30 +532,41 @@ export async function GET(request: Request) {
     }));
 
   const tiles = [
-    { category: "MF", filter: (item: typeof snapshotItems[number]) => item.category === AssetCategory.MF },
+    {
+      category: "MF",
+      filter: (item: (typeof snapshotItems)[number]) =>
+        item.category === AssetCategory.MF,
+    },
     {
       category: "US Stocks",
-      filter: (item: typeof stockItems[number]) => item.category === AssetCategory.US_STOCKS,
+      filter: (item: (typeof stockItems)[number]) =>
+        item.category === AssetCategory.US_STOCKS,
     },
     {
       category: "IND Stocks",
-      filter: (item: typeof stockItems[number]) => item.category === AssetCategory.IND_STOCKS,
+      filter: (item: (typeof stockItems)[number]) =>
+        item.category === AssetCategory.IND_STOCKS,
     },
     {
       category: "Metals & Crypto",
-      filter: (item: typeof snapshotItems[number]) =>
+      filter: (item: (typeof snapshotItems)[number]) =>
         [AssetCategory.METALS, AssetCategory.CRYPTO].includes(item.category),
     },
     {
       category: "Retirals",
-      filter: (item: typeof snapshotItems[number]) => item.category === AssetCategory.RETIRALS,
+      filter: (item: (typeof snapshotItems)[number]) =>
+        item.category === AssetCategory.RETIRALS,
     },
   ];
 
   const tileData = tiles.map((tile) => {
     const items = [
-      ...stockItems.filter((item) => tile.filter(item as typeof stockItems[number])),
-      ...effectiveSnapshots.filter((item) => tile.filter(item as typeof snapshotItems[number])),
+      ...stockItems.filter((item) =>
+        tile.filter(item as (typeof stockItems)[number])
+      ),
+      ...effectiveSnapshots.filter((item) =>
+        tile.filter(item as (typeof snapshotItems)[number])
+      ),
     ].sort((a, b) => b.value - a.value);
 
     const total = items.reduce((sum, item) => sum + item.value, 0);
@@ -512,13 +588,13 @@ export async function GET(request: Request) {
   const buckets = buildBucketDates(range, now);
 
   const priceHistory = stockPrices.reduce((map, price) => {
-    const list = map.get(price.stockId) ?? [];
+    const list = map.get(price.stock_id) ?? [];
     list.push({
-      date: price.asOfDate,
+      date: price.as_of_date,
       price: Number(price.price),
       currency: price.currency as Currency,
     });
-    map.set(price.stockId, list);
+    map.set(price.stock_id, list);
     return map;
   }, new Map<number, { date: Date; price: number; currency: Currency }[]>());
 
@@ -527,16 +603,25 @@ export async function GET(request: Request) {
   }
 
   const transactionsByDate = transactions
-    .filter((txn) => txn.stockId && [TxnAction.BUY, TxnAction.SELL].includes(txn.txnAction))
+    .filter(
+      (txn) =>
+        txn.stockId && [TxnAction.BUY, TxnAction.SELL].includes(txn.txnAction)
+    )
     .sort((a, b) => a.txnDate.getTime() - b.txnDate.getTime());
 
-  const runningPositions = new Map<number, { quantity: number; costBasis: number; stockType: number; name: string }>();
+  const runningPositions = new Map<
+    number,
+    { quantity: number; costBasis: number; stockType: number; name: string }
+  >();
   let txnIndex = 0;
 
   const trendPoints: { date: string; value: number }[] = [];
 
   for (const bucket of buckets) {
-    while (txnIndex < transactionsByDate.length && transactionsByDate[txnIndex].txnDate <= bucket) {
+    while (
+      txnIndex < transactionsByDate.length &&
+      transactionsByDate[txnIndex].txnDate <= bucket
+    ) {
       const txn = transactionsByDate[txnIndex];
       if (!txn.stockId || !txn.stock) {
         txnIndex += 1;
@@ -549,7 +634,7 @@ export async function GET(request: Request) {
         name: txn.stock.name,
       };
       const qty = Number(txn.quantity ?? 0);
-      const unitPrice = Number(txn.unitPrice ?? 0);
+      const unitPrice = Number(txn.unit_price ?? 0);
       const fees = Number(txn.fees ?? 0);
 
       if (txn.txnAction === TxnAction.BUY) {
@@ -569,11 +654,19 @@ export async function GET(request: Request) {
 
     for (const [stockId, position] of runningPositions.entries()) {
       const priceList = priceHistory.get(stockId) ?? [];
-      const price = [...priceList].reverse().find((entry) => entry.date <= bucket);
+      const price = [...priceList]
+        .reverse()
+        .find((entry) => entry.date <= bucket);
       if (!price || position.quantity <= 0) {
         continue;
       }
-      const fxRate = await getFxRate(userId, price.currency, displayCurrency, bucket, fxCache);
+      const fxRate = await getFxRate(
+        userId,
+        price.currency,
+        displayCurrency,
+        bucket,
+        fxCache
+      );
       let value = price.price * position.quantity;
       if (fxRate) {
         value *= fxRate;
@@ -582,8 +675,9 @@ export async function GET(request: Request) {
     }
 
     const snapshotAsOf = mergeLatest(
-      holdingSnapshotsRaw.filter((snap) => snap.asOfDate <= bucket),
-      (snap) => `${snap.label}-${snap.assetCategory}-${snap.platformAccountId ?? 0}`
+      holdingSnapshotsRaw.filter((snap) => snap.as_of_date <= bucket),
+      (snap) =>
+        `${snap.label}-${snap.asset_category}-${snap.platform_account_id ?? 0}`
     );
 
     for (const snap of snapshotAsOf) {
@@ -591,7 +685,7 @@ export async function GET(request: Request) {
         userId,
         snap.currency as Currency,
         displayCurrency,
-        snap.asOfDate,
+        snap.as_of_date,
         fxCache
       );
       let value = Number(snap.value);
@@ -602,8 +696,8 @@ export async function GET(request: Request) {
     }
 
     const realEstateAsOf = mergeLatest(
-      realEstateRaw.filter((valuation) => valuation.asOfDate <= bucket),
-      (valuation) => valuation.propertyName
+      realEstateRaw.filter((valuation) => valuation.as_of_date <= bucket),
+      (valuation) => valuation.property_name
     );
 
     for (const valuation of realEstateAsOf) {
@@ -611,7 +705,7 @@ export async function GET(request: Request) {
         userId,
         valuation.currency as Currency,
         displayCurrency,
-        valuation.asOfDate,
+        valuation.as_of_date,
         fxCache
       );
       let value = Number(valuation.value);
@@ -628,7 +722,9 @@ export async function GET(request: Request) {
 
     let bucketLiabilities = 0;
     for (const liability of liabilities) {
-      const snapshot = liabilitiesAsOf.find((snap) => snap.liabilityId === liability.id);
+      const snapshot = liabilitiesAsOf.find(
+        (snap) => snap.liabilityId === liability.id
+      );
       if (snapshot) {
         bucketLiabilities += Number(snapshot.outstanding);
       } else if (liability.principal) {

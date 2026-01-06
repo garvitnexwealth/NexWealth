@@ -20,9 +20,9 @@ export async function GET() {
     return unauthorized();
   }
 
-  const rates = await prisma.fxRate.findMany({
-    where: { userId },
-    orderBy: { asOfDate: "desc" },
+  const rates = await prisma.fx_rates.findMany({
+    where: { user_id: userId },
+    orderBy: { as_of_date: "desc" },
   });
 
   return NextResponse.json({ data: rates });
@@ -40,12 +40,12 @@ export async function POST(request: Request) {
     return badRequest("Invalid payload", parsed.error.flatten());
   }
 
-  const rate = await prisma.fxRate.create({
+  const rate = await prisma.fx_rates.create({
     data: {
-      userId,
-      asOfDate: parsed.data.asOfDate,
-      fromCurrency: parsed.data.fromCurrency,
-      toCurrency: parsed.data.toCurrency,
+      user_id: userId,
+      as_of_date: parsed.data.asOfDate,
+      from_currency: parsed.data.fromCurrency,
+      to_currency: parsed.data.toCurrency,
       rate: parsed.data.rate,
     },
   });
