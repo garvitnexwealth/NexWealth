@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       liabilityType: parsed.data.liabilityType,
       lender: parsed.data.lender,
-      principal: parsed.data.principal ?? null,
+      principal: parsed.data.principal ?? 0,
       interestRate: parsed.data.interestRate ?? null,
       tenureMonths: parsed.data.tenureMonths ?? null,
       emi: parsed.data.emi ?? null,
