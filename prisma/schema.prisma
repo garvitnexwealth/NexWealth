@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               Int                     @id @default(autoincrement())
+  email            String                  @unique
+  passwordHash     String?                 @map("password_hash")
+  name             String?
+  displayCurrency  String                  @default("INR") @map("display_currency")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  platformAccounts UserPlatformAccount[]
+  liabilities      Liability[]
+  liabilitySnaps   LiabilitySnapshot[]
+  transactions     Transaction[]
+  stockPrices      StockPrice[]
+  holdingSnapshots HoldingSnapshot[]
+  realEstateValues RealEstateValuation[]
+  goals            Goal[]
+  goalLinks        GoalTransactionLink[]
+  targetAllocations TargetAllocation[]
+  fxRates          FxRate[]
+
+  @@map("users")
+}
+
+model Platform {
+  id          Int                   @id @default(autoincrement())
+  name        String                @unique
+  createdAt   DateTime              @default(now()) @map("created_at")
+  subAccounts PlatformSubAccount[]
+  userAccounts UserPlatformAccount[]
+
+  @@map("platforms")
+}
+
+model SubAccountType {
+  id            Int                   @id @default(autoincrement())
+  name          String                @unique
+  type          Int
+  baseCurrency  String                @map("base_currency")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  subAccounts   PlatformSubAccount[]
+  userAccounts  UserPlatformAccount[]
+
+  @@index([type, baseCurrency])
+  @@map("sub_account_types")
+}
+
+model PlatformSubAccount {
+  id               Int             @id @default(autoincrement())
+  platformId       Int             @map("platform_id")
+  subAccountTypeId Int             @map("sub_account_type_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  platform         Platform        @relation(fields: [platformId], references: [id])
+  subAccountType   SubAccountType  @relation(fields: [subAccountTypeId], references: [id])
+
+  @@unique([platformId, subAccountTypeId])
+  @@map("platform_sub_accounts")
+}
+
+model StockList {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  type      Int
+  symbol    String?
+  symbol2   String?    @map("symbol2")
+  sector    String?
+  createdAt DateTime   @default(now()) @map("created_at")
+  prices    StockPrice[]
+  transactions Transaction[]
+
+  @@index([type])
+  @@map("stocks_list")
+}
+
+model UserPlatformAccount {
+  id              Int        @id @default(autoincrement())
+  userId          Int        @map("user_id")
+  platformId      Int        @map("platform_id")
+  subAccountTypeId Int       @map("sub_account_type_id")
+  currency        String
+  createdAt       DateTime   @default(now()) @map("created_at")
+  user            User       @relation(fields: [userId], references: [id])
+  platform        Platform   @relation(fields: [platformId], references: [id])
+  subAccountType  SubAccountType @relation(fields: [subAccountTypeId], references: [id])
+  transactions    Transaction[]
+  holdingSnapshots HoldingSnapshot[]
+
+  @@unique([userId, platformId, subAccountTypeId])
+  @@index([userId, platformId, subAccountTypeId])
+  @@map("user_platform_accounts")
+}
+
+model Liability {
+  id           Int        @id @default(autoincrement())
+  userId       Int        @map("user_id")
+  name         String
+  liabilityType Int       @map("liability_type")
+  lender       String?
+  principal    Decimal?   @db.Decimal(18, 2)
+  interestRate Decimal?   @db.Decimal(10, 4) @map("interest_rate")
+  tenureMonths Int?       @map("tenure_months")
+  emi          Decimal?   @db.Decimal(18, 2)
+  status       Int        @default(1)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  user         User       @relation(fields: [userId], references: [id])
+  snapshots    LiabilitySnapshot[]
+  transactions Transaction[]
+
+  @@index([userId, status])
+  @@map("liabilities")
+}
+
+model LiabilitySnapshot {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  liabilityId Int      @map("liability_id")
+  asOfDate    DateTime @db.Date @map("as_of_date")
+  outstanding Decimal  @db.Decimal(18, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id])
+  liability   Liability @relation(fields: [liabilityId], references: [id])
+
+  @@unique([userId, liabilityId, asOfDate])
+  @@index([userId, asOfDate])
+  @@map("liability_snapshots")
+}
+
+model Transaction {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  platformAccountId Int      @map("platform_account_id")
+  stockId          Int?      @map("stock_id")
+  relatedLiabilityId Int?    @map("related_liability_id")
+  txnAction        Int       @map("txn_action")
+  txnDate          DateTime  @map("txn_date")
+  quantity         Decimal?  @db.Decimal(18, 6)
+  unitPrice        Decimal?  @db.Decimal(18, 4)
+  amount           Decimal   @db.Decimal(18, 2)
+  currency         String
+  fees             Decimal   @default(0) @db.Decimal(18, 2)
+  notes            String?
+  tags             String[]  @db.Text @default([])
+  createdAt        DateTime  @default(now()) @map("created_at")
+  user             User      @relation(fields: [userId], references: [id])
+  platformAccount  UserPlatformAccount @relation(fields: [platformAccountId], references: [id])
+  stock            StockList? @relation(fields: [stockId], references: [id])
+  relatedLiability Liability? @relation(fields: [relatedLiabilityId], references: [id])
+  goalLinks        GoalTransactionLink[]
+
+  @@index([userId, txnDate])
+  @@index([platformAccountId])
+  @@index([stockId])
+  @@index([relatedLiabilityId])
+  @@map("transactions")
+}
+
+model StockPrice {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  stockId   Int      @map("stock_id")
+  price     Decimal  @db.Decimal(18, 4)
+  currency  String
+  asOfDate  DateTime @db.Date @map("as_of_date")
+  source    String   @default("manual")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+  stock     StockList @relation(fields: [stockId], references: [id])
+
+  @@unique([userId, stockId, asOfDate])
+  @@map("stock_prices")
+}
+
+model HoldingSnapshot {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  platformAccountId Int?     @map("platform_account_id")
+  label            String
+  assetCategory    Int       @map("asset_category")
+  value            Decimal   @db.Decimal(18, 2)
+  currency         String
+  asOfDate         DateTime  @db.Date @map("as_of_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  user             User      @relation(fields: [userId], references: [id])
+  platformAccount  UserPlatformAccount? @relation(fields: [platformAccountId], references: [id])
+
+  @@index([userId, asOfDate])
+  @@map("holding_snapshots")
+}
+
+model RealEstateValuation {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  propertyName String   @map("property_name")
+  asOfDate     DateTime @db.Date @map("as_of_date")
+  value        Decimal  @db.Decimal(18, 2)
+  currency     String
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, propertyName, asOfDate])
+  @@map("real_estate_valuations")
+}
+
+model Goal {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  name          String
+  targetAmount  Decimal  @db.Decimal(18, 2) @map("target_amount")
+  targetDate    DateTime @db.Date @map("target_date")
+  priority      Int      @default(3)
+  assetCategory Int      @map("asset_category")
+  status        Int      @default(1)
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [userId], references: [id])
+  links         GoalTransactionLink[]
+
+  @@index([userId, priority])
+  @@map("goals")
+}
+
+model GoalTransactionLink {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  goalId        Int      @map("goal_id")
+  transactionId Int      @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [userId], references: [id])
+  goal          Goal     @relation(fields: [goalId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  @@unique([userId, goalId, transactionId])
+  @@map("goal_transaction_links")
+}
+
+model TargetAllocation {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  assetCategory Int      @map("asset_category")
+  targetPercent Decimal  @db.Decimal(5, 2) @map("target_percent")
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, assetCategory])
+  @@map("target_allocations")
+}
+
+model FxRate {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  asOfDate     DateTime @db.Date @map("as_of_date")
+  fromCurrency String   @map("from_currency")
+  toCurrency   String   @map("to_currency")
+  rate         Decimal  @db.Decimal(18, 6)
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, asOfDate, fromCurrency, toCurrency])
+  @@index([userId, asOfDate])
+  @@map("fx_rates")
+}
