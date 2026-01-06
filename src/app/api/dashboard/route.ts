@@ -334,7 +334,7 @@ export async function GET(request: Request) {
     stocksTotal += convertedValue;
 
     const gainAbs = convertedInvested ? convertedValue - convertedInvested : null;
-    const gainPct = convertedInvested ? (gainAbs / convertedInvested) * 100 : null;
+    const gainPct = convertedInvested && gainAbs !== null ? (gainAbs / convertedInvested) * 100 : null;
 
     stockItems.push({
       label: position.stockName,

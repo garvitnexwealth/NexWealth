@@ -42,7 +42,7 @@ export default function SettingsPage() {
           <p className="mt-2 text-sm text-slate-400">Add manual FX rates for conversions.</p>
           <div className="mt-4 space-y-2 text-sm text-slate-300">
             <div className="flex items-center justify-between rounded-xl bg-ink-850/70 p-3">
-              <span>USD -> INR</span>
+              <span>USD {'->'} INR</span>
               <span>83.10</span>
             </div>
             <button className="rounded-full bg-ink-850 px-4 py-2 text-xs text-slate-200">
