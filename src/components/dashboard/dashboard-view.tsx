@@ -116,7 +116,7 @@ export default function DashboardView() {
     return () => {
       alive = false;
     };
-  }, [range, currency]);
+  }, [range, currency, push]);
 
   const allocationLegend = useMemo(() => {
     if (!data) return [];
